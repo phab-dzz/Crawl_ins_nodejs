@@ -1,0 +1,47 @@
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+const axios = require('axios');
+const path = require('path');
+
+(async () => {
+    const browser = await puppeteer.launch({ headless: false });
+    const page = await browser.newPage();
+    await page.goto('https://example.com'); // Thay thế bằng URL của trang web của bạn
+
+    // Chọn tất cả các thẻ img và lấy URL của chúng
+    const imageUrls = await page.evaluate(() => {
+        const images = Array.from(document.querySelectorAll('img'));
+        return images.map(img => img.src);
+    });
+
+    console.log('Image URLs:', imageUrls);
+
+    // Tải xuống và lưu các ảnh
+    for (const [index, url] of imageUrls.entries()) {
+        const filePath = path.resolve(__dirname, 'images', `image${index}.jpg`);
+        const writer = fs.createWriteStream(filePath);
+
+        const response = await axios({
+            url,
+            method: 'GET',
+            responseType: 'stream'
+        });
+
+        response.data.pipe(writer);
+
+        writer.on('finish', () => console.log(`Image ${index} downloaded successfully!`));
+        writer.on('error', (err) => console.log(`Error downloading image ${index}:`, err));
+    }
+
+    await browser.close();
+})()
+////////////////////////////////
+/////
+const fs = require('fs');
+const path = require('path');
+
+// Tạo thư mục 'images' nếu chưa tồn tại
+const imagesDir = path.resolve(__dirname, 'images');
+if (!fs.existsSync(imagesDir)) {
+    fs.mkdirSync(imagesDir);
+}
